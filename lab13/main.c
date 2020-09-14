@@ -1,61 +1,61 @@
-#include <wchar.h>
-#include <locale.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#pragma pack(1)
-
-// Реализовать редактор текстовой метаинформации mp3 файла.
-// В качестве стандарта метаинформации принимаем ID3v2.
-// Редактор представляет из себя консольную программу, принимающую
-// в качестве аргументов имя файла через параметр --filepath,
-// а также одну из выбранных комманд.
-
-// Я выбрал: --show - отображение всей метаинформации в виде таблицы.
-// Например: app.exe --filepath=Song.mp3 --show
-
-
-typedef struct {
-    unsigned char signature[3];
-    unsigned char version[2];
-    unsigned char flag;
-    unsigned char size[4];
-    
-} id3v2;
-
-int main(int argc, char **argv) {
-    setlocale(LC_ALL, "");
-    setlocale(LC_CTYPE, "");
-
-    if(argc != 3) {
-        printf("Неверное количество аргументов коммандной строки.\nТребуется ровно 2 аргумента. Вы ввели: %d\n", argc-1);
-        // return 0;
+    #include <stdlib.h>
+    #include <stdio.h>
+    #include <string.h>
+    #define ID3_MAX_SIZE 128
+     
+    typedef struct IDv3Tag {
+        char signature[3];
+        char name[30];
+        char artist[30];
+        char album[30];
+        char year[4];
+        char description[30];
+    } ID3TAG;
+     
+    long idv3_file_offset(FILE* fp) {
+        fseek(fp, 0L, SEEK_END); 
+        return ftell(fp) - ID3_MAX_SIZE;
     }
+     
+    int main(int argc, char *argv[]) {
+        
+        if(argc != 3) {
+            printf("Wrong number of console arguments. Must be 3.\nThe program is closing.\n");
+            return 0;
+        }
+        if(strncmp(argv[1], "--filepath=", 11) != 0) {
+            printf("First argument is incorrect. Must be: --filepath=<path>\nThe program is closing.\n");
+            return 0;
+        }
+        if(strncmp(argv[2], "--show", 6) != 0) {
+            printf("Second argument is incorrect. Must be: --show\nThe program is closing.\n");
+            return 0;
+        }
 
-    id3v2 song;
-
-    printf("Открытие файла...\n");
-    FILE *file = fopen("example.mp3", "rb");
-
-    if(!file) {
-        perror("example.mp3");
-        exit(1);
+        FILE* fp = NULL; 
+        const char* filename = argv[1] + 11;  
+        if ((fp = fopen(filename,"r")) == NULL) {
+            printf("Unable to open file %s for reading\n", filename);
+            return 0;
+        }
+        char* buf;
+        buf = (char*)malloc(ID3_MAX_SIZE*sizeof(char));
+        memset((void*)buf, 0x00, ID3_MAX_SIZE);
+     
+        fseek(fp, idv3_file_offset(fp), SEEK_SET);
+        fread(buf, 1, ID3_MAX_SIZE, fp);
+     
+        ID3TAG* pId3Tag = NULL;
+        if((pId3Tag = (ID3TAG*)buf) != NULL) {
+            printf("Name:        %s\n",pId3Tag->name);
+            printf("Artist:      %s\n",pId3Tag->artist);
+            printf("Album:       %s\n",pId3Tag->album);
+            printf("Year:        %s\n",pId3Tag->year);
+            printf("Description: %s\n",pId3Tag->description);
+        }
+     
+        fclose(fp);
+        free(buf);
+     
+        return 0;
     }
-    
-    
-    fread(&song.signature, sizeof(song.signature), 1, file);
-    fread(&song.version, sizeof(song.version), 1, file);
-    fread(&song.flag, sizeof(song.flag), 1, file);
-    fread(&song.size, sizeof(song.size), 1, file);
-
-    
-    printf("%s\n", song.signature);
-    printf("%s\n", song.version);
-    printf("%c\n", song.flag);
-    printf("%s\n", song.size);
-    
-    fclose(file);
-    return 0;
-
-}
